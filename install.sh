@@ -64,10 +64,10 @@ install() {
 
 	 verif
 	 cd ..
+
+	 echo "Installation terminé."
+	 echo "Mise à jour des mods..."
 	 exec ./upgrade.sh --mods-link
-
-	 echo "Installation terminé. Bravo !"
-
 }
 
 sshinstall() {

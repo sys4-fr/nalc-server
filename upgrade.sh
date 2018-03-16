@@ -23,7 +23,9 @@ if [[ $1 == "--mods-link" ]]; then
 	 rm minetest/mods/*
 
 	 # Supression du world.mt
-	 rm world.mt
+	 if [[ -a world.mt ]]; then
+		  rm world.mt
+	 fi
 	 # Création du fichier world.mt depuis sa conf
 	 cp worldmt.conf world.mt
 	 
@@ -51,4 +53,5 @@ if [[ $1 == "--mods-link" ]]; then
 	 fi
 fi
 
+echo "Mise à jour terminé."
 exit 0
