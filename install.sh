@@ -7,57 +7,105 @@ verif() {
 	 fi
 }
 
-# Affichage de l'aide si demandé en paramètres
-if [[ $1 = "--help" ]]; then
+error() {
+	 echo "ERREUR : paramètres invalides !" >&2
+	 echo "utilisez l'option -h pour en savoir plus" >&2
+	 exit 1
+}
+
+usage() {
 	 echo "Usage : ./install.sh [options]"
-	 echo ""
-	 echo "Options :"
-	 echo "--help : Cette aide"
-	 echo "--git-user <utilisateur@serveur> : Utilisateur git"
-	 exit 0
-fi
+	 echo "--help ou -h : Afficher l'aide"
+	 echo "--ssh : Authentification par ssh"
+	 echo "--https : Authentification publique anonyme"
+}
 
-# Récupération de l'utilisateur du dépot git
-if [[ $1 = "--git-user" ]] && [[ -n $2 ]]; then
-	 USER=$2\:
-else
-	 USER="https://sys4.fr/gogs/"
-fi
+install() {
+	 if [[ $1 == "ssh" ]]; then
+		  read -p "Please enter <username>@<host> : " ident
+		  ident=$ident\:
+	 else
+		  ident="https://sys4.fr/gogs/"
+	 fi
+	 
+	 # On clone le dépot du moteur du jeux Minetest à la racine
+	 git clone $ident"NotreAmiLeCube/minetest.git"
+	 verif
 
-# On clone le dépot du moteur du jeux Minetest à la racine
-git clone $USER"NotreAmiLeCube/minetest.git"
-verif
+	 # On clone le dépot du sous-jeux minetest_game à la racine
+	 git clone $ident"NotreAmiLeCube/minetest_game.git"
+	 verif
 
-# On clone le dépot du sous-jeux minetest_game à la racine
-git clone $USER"NotreAmiLeCube/minetest_game.git"
-verif
+	 # On clone les mods de nalc à la racine
+	 git clone $ident"NotreAmiLeCube/nalc-server-mods.git"
+	 verif
 
-# On clone les mods de nalc à la racine
-git clone $USER"NotreAmiLeCube/nalc-server-mods.git"
-verif
+	 # On initialise les sous-modules du dépot des mods
+	 cd nalc-server-mods
+	 git submodule update --init --recursive
 
-# On initialise les sous-modules du dépot des mods
-cd nalc-server-mods
-git submodule update --init --recursive
+	 # On créé les liens symboliques nécessaires
+	 cd ..
+	 ln -s $(pwd)/minetest_game minetest/games/minetest_game
+	 while read -r mod
+	 do
+		  ln -s $(pwd)/nalc-server-mods/$mod minetest/mods/$mod
+	 done <<< $(ls nalc-server-mods)
 
-# On créé les liens symboliques nécessaires
-cd ..
-ln -s $(pwd)/minetest_game minetest/games/minetest_game
-while [ -r mod ]
-do
-	 ln -s $(pwd)/nalc-server-mods/$mod minetest/mods/$mod
-done <<< $(ls nalc-server-mods)
+	 # TODO Lien symbolique minetest.conf
 
-# TODO Lien symbolique minetest.conf
+	 # Création du répertoire de la map
+	 mkdir -p minetest/world/nalc
+	 
+	 # Compilation de Minetest
+	 cd minetest
+	 cmake . -DRUN_IN_PLACE=true -DENABLE_GETTEXT=true
+	 make -j33
 
-# Création du répertoire de la map
-mkdir -p minetest/world/nalc
-# TODO Lien symbolique world.mt
-#ln -s ($pwd)/world.mt minetest/world/nalc/world.mt
+	 verif
+	 cd ..
+	 exec ./upgrade.sh --mods-link
 
-# Compilation de Minetest
-cd minetest
-cmake . -DRUN_IN_PLACE=true -DENABLE_GETTEXT=true
-make -j33
+	 echo "Installation terminé. Bravo !"
 
-echo "Installation terminé. Bravo !"
+}
+
+sshinstall() {
+	 if [[ -z `pidof ssh-agent` ]]; then
+		  echo "Exécutez les commandes suivantes :"
+		  echo "$ eval \`ssh-agent -s\`"
+		  echo "$ ssh-add <chemin vers votre clé privé>"
+		  echo "Relancez de nouveau le script : ./install.sh --ssh"
+		  exit 0
+	 fi
+	 
+	 install "ssh"
+}
+
+# Pas de paramètre
+[[ $# -lt 1 ]] && error
+
+# -o : Options courtes
+# -l : options longues
+options=$(getopt -o h -l help,https,ssh -- "$@")
+
+# éclatement de $options en $1, $2...
+set -- $options
+
+while true; do
+	 case "$1" in
+		  --ssh) sshinstall
+					#shift 2;;
+					exit 0;;
+		  --https) install
+					  #shift;;
+					  exit 0;;
+		  -h|--help) usage
+						 exit 0;;
+		  --)
+				shift
+				break;;
+		  *) error
+			  shift;;
+	 esac
+done
