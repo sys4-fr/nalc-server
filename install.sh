@@ -55,7 +55,7 @@ install() {
 	 # TODO Lien symbolique minetest.conf
 
 	 # Création du répertoire de la map
-	 mkdir -p minetest/world/nalc
+	 mkdir -p minetest/worlds/nalc
 	 
 	 # Compilation de Minetest
 	 cd minetest

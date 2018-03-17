@@ -48,8 +48,8 @@ if [[ $1 == "--mods-link" ]]; then
 	 done <<< $(ls nalc-server-mods)
 
 	 # Lien symbolique world.mt
-	 if [[ ! -a minetest/world/nalc/world.mt ]]; then
-		  ln -s $(pwd)/world.mt minetest/world/nalc/world.mt
+	 if [[ ! -a minetest/worlds/nalc/world.mt ]]; then
+		  ln -s $(pwd)/world.mt minetest/worlds/nalc/world.mt
 	 fi
 fi
 
