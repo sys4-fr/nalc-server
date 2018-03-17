@@ -1,5 +1,7 @@
 #!/bin/bash
 
+auth="https"
+
 verif() {
 	 if [[ $? -gt 0 ]]; then
 		  echo "Erreur ! Arrêt du script."
@@ -7,18 +9,22 @@ verif() {
 	 fi
 }
 
-# Affichage de l'aide si demandé en paramètres
-if [[ $1 = "--help" ]]; then
-	 echo "Usage : ./upgrade.sh [options]"
-	 echo ""
-	 echo "Options :"
-	 echo "--help : Cette aide"
-	 echo "--mods-link : Met à jour les liens symboliques des mods seulement"
-	 exit 0
-fi
+error() {
+	 echo "ERREUR : paramètres invalides !" >&2
+	 echo "utilisez l'option -h pour en savoir plus" >&2
+	 exit 1
+}
 
-# Mise à jour de tous les liens symboliques des mods
-if [[ $1 == "--mods-link" ]]; then
+usage() {
+	 echo "Usage : ./upgrade.sh [options]"
+	 echo "--help ou -h : Afficher l'aide"
+	 echo "--ssh : Authentification par ssh"
+	 echo "--https : Authentification publique anonyme"
+	 echo "--mods-link : Met à jour les liens symboliques des mods et le fichier world.mt"
+	 echo "--mods <mod|all> : Met à jour le(s) mod(s) depuis le dépôt distant"
+}
+
+modslink() {
 	 # Suppression des liens
 	 rm minetest/mods/*
 
@@ -47,11 +53,92 @@ if [[ $1 == "--mods-link" ]]; then
 		  fi
 	 done <<< $(ls nalc-server-mods)
 
+	 echo "Liens des mods créés dans minetest/mods/"
+	 
 	 # Lien symbolique world.mt
 	 if [[ ! -a minetest/worlds/nalc/world.mt ]]; then
 		  ln -s $(pwd)/world.mt minetest/worlds/nalc/world.mt
+		  echo "Lien vers world.mt créé dans minetest/worlds/nalc/"
 	 fi
-fi
+}
 
-echo "Mise à jour terminé."
+modsupgrade() {
+	 if [[ $auth == "ssh" ]]; then
+		  read -p "Please enter <username>@<host> : " ident
+		  ident=$ident\:
+	 else
+		  ident="https://sys4.fr/gogs/"
+	 fi
+
+	 mods=$(echo $1 | cut -f 2 -d \')
+	 
+	 if [[ $mods == "all" ]]; then
+
+		  # On met à jour le dépot local des mods
+		  cd nalc-server-mods
+		  git pull
+		  git submodule update --init --recursive
+		  verif
+		  cd ..
+	 else
+		  # Mise à jour du mod spécifié en ligne de commande
+		  cd nalc-server-mods
+		  git pull
+		  git submodule update --init --recursive $1
+		  verif
+		  cd ..
+	 fi
+
+	 # Mise à jour des liens
+	 modslink
+}
+
+sshauth() {
+	 if [[ -z `pidof ssh-agent` ]]; then
+		  echo "Exécutez les commandes suivantes :"
+		  echo "$ eval \`ssh-agent -s\`"
+		  echo "$ ssh-add <chemin vers votre clé privé>"
+		  echo "Relancez de nouveau le script : ./upgrade.sh --ssh [options]"
+		  exit 0
+	 else
+		  auth="ssh"
+		  echo "Authentification ssh activé."
+	 fi
+}
+
+httpauth() {
+	 auth="https"
+	 echo "Authentification https activé."
+}
+
+# Pas de paramètre
+[[ $# -lt 1 ]] && error
+
+# -o : Options courtes
+# -l : Options longues
+options=$(getopt -o h -l help,https,ssh,mods-link,mods: -- "$@")
+
+# Éclatement de $options en $1, $2...
+set -- $options
+
+while true; do
+	 case "$1" in
+		  --ssh) sshauth
+					shift;;
+		  --https) httpsauth
+					  shift;;
+		  --mods-link) modslink
+							shift;;
+		  --mods) modsupgrade $2
+					 shift 2;;
+		  -h|--help) usage
+						 exit 0;;
+		  --)
+				shift
+				break;;
+		  *) error
+			  shift;;
+	 esac
+done
+
 exit 0
