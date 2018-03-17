@@ -22,6 +22,7 @@ usage() {
 	 echo "--https : Authentification publique anonyme"
 	 echo "--mods-link : Met à jour les liens symboliques des mods et le fichier world.mt"
 	 echo "--mods <mod|all> : Met à jour le(s) mod(s) depuis le dépôt distant"
+	 echo "--minetest : Met à jour le moteur du jeux depuis le dépot distant"
 }
 
 modslink() {
@@ -93,6 +94,15 @@ modsupgrade() {
 	 modslink
 }
 
+minetestupgrade() {
+	 cd minetest
+	 git pull
+	 verif
+	 cmake . -DRUN_IN_PLACE=true -DENABLE_GETTEXT=true
+	 make -j33
+	 cd ..
+}
+
 sshauth() {
 	 if [[ -z `pidof ssh-agent` ]]; then
 		  echo "Exécutez les commandes suivantes :"
@@ -116,7 +126,7 @@ httpauth() {
 
 # -o : Options courtes
 # -l : Options longues
-options=$(getopt -o h -l help,https,ssh,mods-link,mods: -- "$@")
+options=$(getopt -o h -l help,https,ssh,mods-link,minetest,mods: -- "$@")
 
 # Éclatement de $options en $1, $2...
 set -- $options
@@ -131,6 +141,8 @@ while true; do
 							shift;;
 		  --mods) modsupgrade $2
 					 shift 2;;
+		  --minetest) minetestupgrade
+						  shift;;
 		  -h|--help) usage
 						 exit 0;;
 		  --)
