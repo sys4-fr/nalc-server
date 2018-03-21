@@ -23,6 +23,7 @@ usage() {
 	 echo "--mods-link : Met à jour les liens symboliques des mods et le fichier world.mt"
 	 echo "--mods <mod|all> : Met à jour le(s) mod(s) depuis le dépôt distant"
 	 echo "--minetest : Met à jour le moteur du jeux depuis le dépot distant"
+	 echo "--game : Met à jour le jeux minetest depuis le dépot distant"
 }
 
 modslink() {
@@ -78,14 +79,14 @@ modsupgrade() {
 		  # On met à jour le dépot local des mods
 		  cd nalc-server-mods
 		  git pull
-		  git submodule update --init --recursive
+		  git submodule update --remote --recursive
 		  verif
 		  cd ..
 	 else
 		  # Mise à jour du mod spécifié en ligne de commande
 		  cd nalc-server-mods
 		  git pull
-		  git submodule update --init --recursive $1
+		  git submodule update --remote --recursive $1
 		  verif
 		  cd ..
 	 fi
@@ -101,7 +102,22 @@ minetestupgrade() {
 	 cmake . -DRUN_IN_PLACE=true -DENABLE_GETTEXT=true
 	 make -j33
 	 cd ..
+	 echo "Upgrade du moteur Minetest terminé."
 }
+
+gameupgrade() {
+	 cd minetest/games/minetest_game
+	 git pull
+	 cd ../../..
+	 echo "Upgrade du jeux Minetest terminé."
+}
+
+upgradeall() {
+	 gameupgrade
+	 modsupgrade "all"
+	 minetestupgrade
+}
+	 
 
 sshauth() {
 	 if [[ -z `pidof ssh-agent` ]]; then
@@ -126,7 +142,7 @@ httpauth() {
 
 # -o : Options courtes
 # -l : Options longues
-options=$(getopt -o h -l help,https,ssh,mods-link,minetest,mods: -- "$@")
+options=$(getopt -o h -l help,https,ssh,mods-link,minetest,game,mods: -- "$@")
 
 # Éclatement de $options en $1, $2...
 set -- $options
@@ -143,6 +159,10 @@ while true; do
 					 shift 2;;
 		  --minetest) minetestupgrade
 						  shift;;
+		  --game) gameupgrade
+					 shift;;
+		  --all) upgradeall
+					shift;;
 		  -h|--help) usage
 						 exit 0;;
 		  --)
