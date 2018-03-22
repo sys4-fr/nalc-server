@@ -7,8 +7,8 @@ strip() {
 
 verif() {
     if [[ $? -gt 0 ]]; then
-	echo "Erreur ! Arrêt du script."
-	exit 1
+		  echo "Erreur ! Arrêt du script."
+		  exit 1
     fi
 }
 
@@ -50,10 +50,10 @@ makeopt() {
 
 full() {
     if [[ -n $URL ]]; then
-	echo "Full install... with "$URL
+		  echo "Full install... with "$URL
     else
-	echo "ERREUR: Vous devez choisir l'option --ssh ou --https avec cette commande !"
-	usage
+		  echo "ERREUR: Vous devez choisir l'option --ssh ou --https avec cette commande !"
+		  usage
     fi
 }
 
@@ -73,16 +73,17 @@ install_minetest() {
 				echo "Attention ! Cela va supprimer définitivement toutes les données."
 				read -p "Êtes-vous certains de vouloir continuer ? (y or n) : " continue
 				if [[ $continue == "y" ]]; then
-					 echo "rm -rf minetest"
+					 rm -rf minetest
 					 echo "Répertoire minetest supprimé."
 				else
 					 echo "Installation annulée. Fin"
 					 exit 0
 				fi
 		  elif [[ $continue == "y" ]]; then
-				echo "cd minetest"
-				echo "git pull"
-				echo "cd .."
+				cd minetest
+				git pull
+				verif
+				cd ..
 		  elif [[ $continue == "cancel" ]]; then
 				echo "Installation annulée. Fin"
 				exit 0
@@ -90,23 +91,140 @@ install_minetest() {
 	 fi
 
 	 if [[ ! -d minetest ]]; then
-		  echo "git clone $URL/minetest.git"
+		  git clone $URL/minetest.git
+		  verif
 	 fi
 
 	 echo "Minetest va être recompilé..."
 	 sleep 3
-	 echo "cd minetest"
-	 echo "cmake ."
-	 echo "make -j$makeopt"
+	 cd minetest
+	 cmake . -DRUN_IN_PLACE=true -DGETTEXT=true
+	 make -j$makeopt
 	 echo "Installation de Minetest terminé."
-	 echo "cd .."
+	 cd ..
 }
 
 install_minetest_game() {
-	 if [[ -d minetest/games/minetest_game ]]; then
+	 if [[ -d minetest_game ]]; then
 		  echo "Installation précédente du jeux Minetest détecté."
-		  read -p "Mettre à jour ? (y,n,clean,cancel)" continue
+		  read -p "Mettre à jour ? (y,n,clean,cancel) " continue
+		  if [[ $continue == "y" ]]; then
+				cd minetest_game
+				git pull
+				verif
+				cd ..
+				echo "Mise à jour du jeux Minetest depuis dépôt distant terminé."
+		  elif [[ $continue == "clean" ]]; then
+				echo "/!\ Cette action va effacer les données du répertoire minetest_game"
+				read -p "Êtes-vous sûr de vouloir continuer ? (y or n) " continue
+				if [[ $continue == "y" ]]; then
+					 rm -rf minetest_game
+					 echo "Jeux Minetest supprimé."
+				else
+					 echo "Mise à jour annulée. Terminé."
+					 exit 0
+				fi
+		  elif [[ $continue == "cancel" ]]; then
+				echo "Mise à jour annulée. Terminé."
+				exit 0
+		  fi
 	 fi
+
+	 if [[ ! -d minetest_game ]]; then
+		  git clone $URL/minetest_game.git
+		  verif
+		  echo "Clonage de minetest_game terminé."
+	 fi
+
+	 if [[ ! -a minetest/games/minetest_game ]]; then
+		  ln -s $(pwd)/minetest_game minetest/games/minetest_game
+		  echo "Lien symbolique minetest/games/minetest_game vers $(pwd)/minetest_game créé."
+	 fi
+
+	 echo "Installation/Mise à jour du jeux Minetest terminé."
+}
+
+install_world() {
+	 if [[ -d minetest/worlds/nalc ]]; then
+		  echo "Une map est déjà présente. Que souhaitez-vous faire ?"
+		  read -p "Choisissez parmi la liste ([1]Nouveau, [2]Utiliser) : " continuer
+		  if [[ $continuer == 1 ]]; then
+				if [[ -d minetest/worlds/nalc_old ]]; then
+					 rm -rf minetest/worlds/nalc_old
+				fi
+				
+				mv minetest/worlds/nalc minetest/worlds/nalc_old
+		  fi
+	 fi
+
+	 if [[ ! -d minetest/worlds/nalc ]]; then
+		  mkdir -p minetest/worlds/nalc
+		  ln -s $(pwd)/world.mt minetest/worlds/nalc/world.mt
+	 fi
+}		
+
+install_mods() {
+	 if [[ -d nalc-server-mods ]]; then
+		  echo "Le dossier de mods est déjà présent. Que souhaitez-vous faire ?"
+		  read -p "Choisissez parmi la liste, ([1]update, [2]clean, [3]cancel, [4]Ne rien faire) : " continue
+		  if [[ $continue == 1 ]]; then
+				cd nalc-server-mods
+				git pull
+				verif
+				git submodule update --remote --recursive
+				verif
+				cd ..
+		  elif [[ $continue == 2 ]]; then
+				rm -rf nalc-server-mods
+		  elif [[ $continue == 3 ]]; then
+				echo "Mise à jour des mods annulé. Terminé."
+				exit 0
+		  fi
+	 fi
+
+	 if [[ ! -d nalc-server-mods ]]; then
+		  git clone $URL/nalc-server-mods.git
+		  verif
+		  cd nalc-server-mods
+		  git submodule update --init --recursive
+		  cd ..
+	 fi
+
+	 # Recréation des liens symboliques et du fichier world.mt (dans tous les cas)
+	 rm minetest/mods/*
+
+	 if [[ -a world.mt ]]; then
+		  rm world.mt
+	 fi
+
+	 cp worldmt.conf world.mt
+
+	 if [[ -d custom/mods ]]; then
+		  ls custom/mods | while read -r mod; do
+				if [[ -d custom/mods/$mod ]]; then
+					 rm nalc-server-mods/$mod
+					 ln -s $(pwd)/custom/mods/$mod nalc-server-mods/$mod
+				fi
+		  done
+	 fi
+
+	 ls nalc-server-mods | while read -r mod; do
+		  if [[ -d nalc-server-mods/$mod ]]; then
+				ln -s $(pwd)/nalc-server-mods/$mod minetest/mods/$mod
+
+				if [[ -a nalc-server-mods/$mod/modpack.txt ]]; then
+					 ls nalc-server-mods/$mod | while read -r submod; do
+						  if [[ -d nalc-server-mods/$mod/$submod ]]; then
+								echo "load_mod_$submod = true" >> world.mt
+						  fi
+					 done
+				else
+					 echo "load_mod_$mod = true" >> world.mt
+				fi
+		  fi
+	 done
+
+	 echo "Liens des mods créés dans minetest/mods/"
 }
 
 init() {
@@ -123,7 +241,7 @@ init() {
 		  install_minetest
 		  install_minetest_game
 		  install_mods
-		  post_configuration
+		  install_world
 		  
 		  echo "L'installation est terminé. Bravo !"
 	 else
@@ -134,11 +252,11 @@ init() {
 action() {
     local arg=$(strip $1)
     if [[ $arg == "init" ]]; then
-	init
+		  init
     elif [[ $arg == "clean" ]]; then
-	clean
+		  clean
     else
-	error
+		  error
     fi
     exit 0
 }
