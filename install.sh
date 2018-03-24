@@ -65,12 +65,13 @@ postgresql() {
 	 read -p "Indiquez l'adresse de la base de données : " pg_url
 	 read -p "Indiquez l'utilisateur de la BDD : " pg_user
 	 read -p "Indiquez le mot de passe : " pg_password
-	 read -p "Indiquez le nom de la BDD à créer : " pg_dbname
+	 read -p "Indiquez le nom de la BDD à utiliser : " pg_dbname
 
 	 echo "gameid = minetest_game" > worldmt.conf
 	 echo "backend = postgresql" >> worldmt.conf
-	 echo "psql_connection = \"host=$pg_url user=$pg_user password=$pg_password dbname=$pg_dbname\"" >> worldmt.conf
-	 echo "psql_player_connection = \"host=$pg_url user=$pg_user password=$pg_password dbname=players-$pg_dbname\"" >> worldmt.conf
+	 echo "player_backend = postgresql" >> worldmt.conf
+	 echo "pgsql_connection = host=$pg_url user=$pg_user password=$pg_password dbname=$pg_dbname" >> worldmt.conf
+	 echo "pgsql_player_connection = host=$pg_url user=$pg_user password=$pg_password dbname=players-$pg_dbname" >> worldmt.conf
 }
 
 install_0.4() {
