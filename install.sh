@@ -22,16 +22,14 @@ usage() {
     echo "Usage: ./install.sh [options] [--] <arg>"
     echo "Options :"
     echo "--help | -h : Affiche l'aide."
-    echo "--verbose | -v : Be verbose !"
+    echo "--makeopt | -j : Passer des options à make."
     echo "--ssh <user@host>: Identifiants ssh."
     echo "--url <URL>: URL distante personnalisée."
+	 echo "--irrlicht | -i : Chemin personnalisé des sources irrlicht."
     echo -e "\tSi l'option --ssh est passée en option, il s'agira du chemin distant."
     echo "Commandes :"
-    echo -e "\tinit : Installation par défaut. Suivez les instructions..."
-    echo -e "\t\tSi une installation précédente est détectée alors le script s'arrête."
-    echo -e "\tupgrade : Met à jour le serveur tout en sauvegardant la version précédente au cas où."
-    echo -e "\tclean_install : /!\ Permet de faire une installation qui supprime toute installation précédente (Perte de la map et des paramètres définitif...)."
-    echo -e "\tuninstall : /!\ Permet de supprimer l'installation courante (Perte de données...)."
+    echo -e "\t0.5 : Installation du serveur avec minetest-0.5.x. Suivez les instructions..."
+    echo -e "\t0.4 : Installation du serveur avec minetest-0.4.x. Suivez les instructions..."
     exit 0
 }
 
@@ -61,9 +59,32 @@ clean() {
     echo "clean install..."
 }
 
+install_0.4() {
+	 if [[ -d server-0.4 ]]; then
+		  echo "Installation précédente détecté. Voulez-vous faire la mise à jour ?"
+		  read -p "Continuer ? (y or n) " continuer
+		  if [[ $continuer == "y" ]]; then
+				cd server-0.4
+				git pull
+				verif
+				git submodule update --remote --recursive
+				verif
+		  else
+				echo "Mise à jour annulé."
+		  fi
+	 else
+		  git clone https://github.com/sys4-fr/server-nalc.git server-0.4
+		  verif
+		  cd server-0.4
+		  git submodule update --init --recursive
+		  verif
+	 fi
+	 cd ..
+}
+
 install_minetest() {
 	 if [[ -z $makeopt ]]; then
-		  local makeopt=1
+		  local makeopt=$(grep -c processor /proc/cpuinfo)
 	 fi
 	 
 	 if [[ -d minetest ]]; then
@@ -91,21 +112,25 @@ install_minetest() {
 	 fi
 
 	 if [[ ! -d minetest ]]; then
-		  git clone $URL/minetest.git
+		  if [[ $ver == "0.4" ]]; then
+				git clone -b backport-0.4 https://github.com/minetest/minetest.git
+		  else
+				git clone $URL/minetest.git
+		  fi
 		  verif
 	 fi
 
-	 echo "Minetest va être recompilé..."
+	 echo "Minetest va être (re)compilé..."
 	 sleep 3
 	 cd minetest
-	 cmake . -DRUN_IN_PLACE=true -DGETTEXT=true
+	 cmake . -DBUILD_CLIENT=0 -DBUILD_SERVER=1 -DENABLE_SOUND=0 -DENABLE_SYSTEM_GMP=1 $irrlicht_src -DENABLE_LEVELDB=0 -DENABLE_REDIS=1 -DRUN_IN_PLACE=1 -DENABLE_GETTEXT=1 -DENABLE_FREETYPE=1 -DENABLE_LUAJIT=1 -DENABLE_CURL=1
 	 make -j$makeopt
 	 echo "Installation de Minetest terminé."
 	 cd ..
 }
 
 install_minetest_game() {
-	 if [[ -d minetest_game ]]; then
+	 if [[ -d minetest_game && ! $ver == "0.4" ]]; then
 		  echo "Installation précédente du jeux Minetest détecté."
 		  read -p "Mettre à jour ? (y,n,clean,cancel) " continue
 		  if [[ $continue == "y" ]]; then
@@ -131,9 +156,18 @@ install_minetest_game() {
 	 fi
 
 	 if [[ ! -d minetest_game ]]; then
-		  git clone $URL/minetest_game.git
-		  verif
-		  echo "Clonage de minetest_game terminé."
+		  if [[ ! $ver == "0.4" ]]; then
+				git clone $URL/minetest_game.git
+				verif
+				echo "Clonage de minetest_game terminé."
+		  else
+				ln -s $(pwd)/server-0.4/minetest_game minetest_game
+		  fi
+	 elif [[ $ver == "0.4" ]]; then
+		  if [[ -a minetest_game ]]; then
+				rm minetest_game
+		  fi
+		  ln -s $(pwd)/server-0.4/minetest_game minetest_game
 	 fi
 
 	 if [[ ! -a minetest/games/minetest_game ]]; then
@@ -159,75 +193,88 @@ install_world() {
 
 	 if [[ ! -d minetest/worlds/nalc ]]; then
 		  mkdir -p minetest/worlds/nalc
-		  ln -s $(pwd)/world.mt minetest/worlds/nalc/world.mt
+		  if [[ $ver == "0.4" ]]; then
+				ln -s $(pwd)/server-0.4/worlds/minetestforfun/world.mt minetest/worlds/nalc/worlds.mt
+		  else
+				ln -s $(pwd)/world.mt minetest/worlds/nalc/world.mt
+		  fi
 	 fi
 }		
 
 install_mods() {
-	 if [[ -d nalc-server-mods ]]; then
-		  echo "Le dossier de mods est déjà présent. Que souhaitez-vous faire ?"
-		  read -p "Choisissez parmi la liste, ([1]update, [2]clean, [3]cancel, [4]Ne rien faire) : " continue
-		  if [[ $continue == 1 ]]; then
-				cd nalc-server-mods
-				git pull
-				verif
-				git submodule update --remote --recursive
-				verif
-				cd ..
-		  elif [[ $continue == 2 ]]; then
-				rm -rf nalc-server-mods
-		  elif [[ $continue == 3 ]]; then
-				echo "Mise à jour des mods annulé. Terminé."
-				exit 0
+	 if [[ $ver == "0.4" ]]; then
+		  if [[ -d minetest/mods ]]; then
+				rm -rf minetest/mods
+				ln -s $(pwd)/server-0.4/mods minetest/mods
 		  fi
-	 fi
-
-	 if [[ ! -d nalc-server-mods ]]; then
-		  git clone $URL/nalc-server-mods.git
-		  verif
-		  cd nalc-server-mods
-		  git submodule update --init --recursive
-		  cd ..
-	 fi
-
-	 # Recréation des liens symboliques et du fichier world.mt (dans tous les cas)
-	 rm minetest/mods/*
-
-	 if [[ -a world.mt ]]; then
-		  rm world.mt
-	 fi
-
-	 cp worldmt.conf world.mt
-
-	 if [[ -d custom/mods ]]; then
-		  ls custom/mods | while read -r mod; do
-				if [[ -d custom/mods/$mod ]]; then
-					 rm nalc-server-mods/$mod
-					 ln -s $(pwd)/custom/mods/$mod nalc-server-mods/$mod
+	 else
+		  if [[ -d nalc-server-mods ]]; then
+				echo "Le dossier de mods est déjà présent. Que souhaitez-vous faire ?"
+				read -p "Choisissez parmi la liste, ([1]update, [2]clean, [3]cancel, [4]Ne rien faire) : " continue
+				if [[ $continue == 1 ]]; then
+					 cd nalc-server-mods
+					 git pull
+					 verif
+					 git submodule update --remote --recursive
+					 verif
+					 cd ..
+				elif [[ $continue == 2 ]]; then
+					 rm -rf nalc-server-mods
+				elif [[ $continue == 3 ]]; then
+					 echo "Mise à jour des mods annulé. Terminé."
+					 exit 0
+				fi
+		  fi
+		  
+		  if [[ ! -d nalc-server-mods ]]; then
+				git clone $URL/nalc-server-mods.git
+				verif
+				cd nalc-server-mods
+				git submodule update --init --recursive
+				cd ..
+		  fi
+		  
+		  # Recréation des liens symboliques et du fichier world.mt (dans tous les cas)
+		  rm minetest/mods/*
+		  
+		  if [[ -a world.mt ]]; then
+				rm world.mt
+		  fi
+		  
+		  cp worldmt.conf world.mt
+		  
+		  if [[ -d custom/mods ]]; then
+				ls custom/mods | while read -r mod; do
+					 if [[ -d custom/mods/$mod ]]; then
+						  rm nalc-server-mods/$mod
+						  ln -s $(pwd)/custom/mods/$mod nalc-server-mods/$mod
+					 fi
+				done
+		  fi
+		  
+		  ls nalc-server-mods | while read -r mod; do
+				if [[ -d nalc-server-mods/$mod ]]; then
+					 ln -s $(pwd)/nalc-server-mods/$mod minetest/mods/$mod
+					 
+					 if [[ -a nalc-server-mods/$mod/modpack.txt ]]; then
+						  ls nalc-server-mods/$mod | while read -r submod; do
+								if [[ -d nalc-server-mods/$mod/$submod ]]; then
+									 echo "load_mod_$submod = true" >> world.mt
+								fi
+						  done
+					 else
+						  echo "load_mod_$mod = true" >> world.mt
+					 fi
 				fi
 		  done
+		  
+		  echo "Liens des mods créés dans minetest/mods/"
 	 fi
-
-	 ls nalc-server-mods | while read -r mod; do
-		  if [[ -d nalc-server-mods/$mod ]]; then
-				ln -s $(pwd)/nalc-server-mods/$mod minetest/mods/$mod
-
-				if [[ -a nalc-server-mods/$mod/modpack.txt ]]; then
-					 ls nalc-server-mods/$mod | while read -r submod; do
-						  if [[ -d nalc-server-mods/$mod/$submod ]]; then
-								echo "load_mod_$submod = true" >> world.mt
-						  fi
-					 done
-				else
-					 echo "load_mod_$mod = true" >> world.mt
-				fi
-		  fi
-	 done
-
-	 echo "Liens des mods créés dans minetest/mods/"
 }
 
 init() {
+	 ver=$(strip $1)
+	 
 	 if [[ -n $ssh && -n $url ]]; then
 		  URL=$ssh\:$url
 	 elif [[ -n $url ]]; then
@@ -238,6 +285,9 @@ init() {
 
 	 read -p "L'installation va démarrer. Continuer ? (y or n) : " continue
 	 if [[ $continue == "y" ]]; then
+		  if [[ $ver == "0.4" ]]; then
+				install_0.4
+		  fi
 		  install_minetest
 		  install_minetest_game
 		  install_mods
@@ -251,14 +301,21 @@ init() {
 
 action() {
     local arg=$(strip $1)
-    if [[ $arg == "init" ]]; then
-		  init
-    elif [[ $arg == "clean" ]]; then
-		  clean
+    if [[ $arg == "0.5" ]]; then
+		  init "0.5"
+    elif [[ $arg == "0.4" ]]; then
+		  init "0.4"
     else
 		  error
     fi
     exit 0
+}
+
+irrlicht() {
+	 local arg=$(strip $1)
+	 if [[ -d $arg ]]; then
+		  irrlicht_src="-DIRRLICHT_SOURCE_DIR=$arg"
+	 fi
 }
 
 # Pas de paramètre
@@ -268,7 +325,7 @@ action() {
 
 # -o : Options courtes
 # -l : options longues
-OPT=$(getopt -o h,v,j: -l verbose,help,url:,ssh:,makeopt: -- "$@")
+OPT=$(getopt -o h,j:,i: -l help,url:,ssh:,makeopt:,irrlicht: -- "$@")
 
 # éclatement de $options en $1, $2...
 set -- $OPT
@@ -280,6 +337,9 @@ while true; do
 	    shift;;
 	-h|--help)
 	    usage;;
+	-i|--irrlicht)
+		 irrlicht $2
+		 shift 2;;
 	--ssh)
 	    ssh $2
 	    shift 2;;
@@ -296,54 +356,3 @@ while true; do
 	    shift;;
     esac
 done
-
-install() {
-	 if [[ $1 == "ssh" ]]; then
-		  read -p "Please enter <username>@<host> : " ident
-		  ident=$ident\:
-	 else
-		  ident="https://sys4.fr/gogs/"
-	 fi
-	 
-	 # On clone le dépot du moteur du jeux Minetest à la racine
-	 git clone $ident"NotreAmiLeCube/minetest.git"
-	 verif
-
-	 # On clone le dépot du sous-jeux minetest_game à la racine
-	 git clone $ident"NotreAmiLeCube/minetest_game.git"
-	 verif
-
-	 # On clone les mods de nalc à la racine
-	 git clone $ident"NotreAmiLeCube/nalc-server-mods.git"
-	 verif
-
-	 # On initialise les sous-modules du dépot des mods
-	 cd nalc-server-mods
-	 git submodule update --init --recursive
-
-	 # On créé les liens symboliques nécessaires
-	 cd ..
-	 ln -s $(pwd)/minetest_game minetest/games/minetest_game
-	 ln -s $(pwd)/custom/mods/nalc nalc-server-mods/nalc
-	 while read -r mod
-	 do
-		  ln -s $(pwd)/nalc-server-mods/$mod minetest/mods/$mod
-	 done <<< $(ls nalc-server-mods)
-
-	 # TODO Lien symbolique minetest.conf
-
-	 # Création du répertoire de la map
-	 mkdir -p minetest/worlds/nalc
-	 
-	 # Compilation de Minetest
-	 cd minetest
-	 cmake . -DRUN_IN_PLACE=true -DENABLE_GETTEXT=true
-	 make -j33
-
-	 verif
-	 cd ..
-
-	 echo "Installation terminé."
-	 echo "Mise à jour des mods..."
-	 exec ./upgrade.sh --mods-link
-}
