@@ -26,6 +26,7 @@ usage() {
     echo "--ssh <user@host>: Identifiants ssh."
     echo "--url <URL>: URL distante personnalisée."
 	 echo "--irrlicht | -i : Chemin personnalisé des sources irrlicht."
+	 echo "--postgresql | -p : Si vous voulez que le serveur soit configuré avec postgresql"
     echo -e "\tSi l'option --ssh est passée en option, il s'agira du chemin distant."
     echo "Commandes :"
     echo -e "\t0.5 : Installation du serveur avec minetest-0.5.x. Suivez les instructions..."
@@ -57,6 +58,19 @@ full() {
 
 clean() {
     echo "clean install..."
+}
+
+postgresql() {
+	 echo "Les indications à fournir ci-après nécessite d'avoir configuré un serveur postgresql au préalable. (Ctrl-C) pour annuler."
+	 read -p "Indiquez l'adresse de la base de données : " pg_url
+	 read -p "Indiquez l'utilisateur de la BDD : " pg_user
+	 read -p "Indiquez le mot de passe : " pg_password
+	 read -p "Indiquez le nom de la BDD à créer : " pg_dbname
+
+	 echo "gameid = minetest_game" > worldmt.conf
+	 echo "backend = postgresql" >> worldmt.conf
+	 echo "psql_connection = \"host=$pg_url user=$pg_user password=$pg_password dbname=$pg_dbname\"" >> worldmt.conf
+	 echo "psql_player_connection = \"host=$pg_url user=$pg_user password=$pg_password dbname=players-$pg_dbname\"" >> worldmt.conf
 }
 
 install_0.4() {
@@ -349,7 +363,7 @@ irrlicht() {
 
 # -o : Options courtes
 # -l : options longues
-OPT=$(getopt -o h,j:,i: -l help,url:,ssh:,makeopt:,irrlicht: -- "$@")
+OPT=$(getopt -o h,p,j:,i: -l help,postgresql,url:,ssh:,makeopt:,irrlicht: -- "$@")
 
 # éclatement de $options en $1, $2...
 set -- $OPT
@@ -361,6 +375,9 @@ while true; do
 	-i|--irrlicht)
 		 irrlicht $2
 		 shift 2;;
+	-p|--postgresql)
+		 postgresql
+		 shift;;
 	--ssh)
 	    ssh $2
 	    shift 2;;
