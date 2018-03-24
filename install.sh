@@ -69,6 +69,7 @@ install_0.4() {
 				verif
 				git submodule update --remote --recursive
 				verif
+				cd ..
 		  else
 				echo "Mise à jour annulé."
 		  fi
@@ -78,8 +79,8 @@ install_0.4() {
 		  cd server-0.4
 		  git submodule update --init --recursive
 		  verif
+		  cd ..
 	 fi
-	 cd ..
 }
 
 install_minetest() {
@@ -194,7 +195,7 @@ install_world() {
 	 if [[ ! -d minetest/worlds/nalc ]]; then
 		  mkdir -p minetest/worlds/nalc
 		  if [[ $ver == "0.4" ]]; then
-				ln -s $(pwd)/server-0.4/worlds/minetestforfun/world.mt minetest/worlds/nalc/worlds.mt
+				ln -s $(pwd)/server-0.4/worlds/minetestforfun/world.mt minetest/worlds/nalc/world.mt
 		  else
 				ln -s $(pwd)/world.mt minetest/worlds/nalc/world.mt
 		  fi
@@ -272,6 +273,29 @@ install_mods() {
 	 fi
 }
 
+post_install() {
+	 if [[ ! -a minetest/minetest.conf ]]; then
+		  if [[ $ver == "0.4" ]]; then
+				cp server-0.4/minetest.conf minetest/minetest.conf
+		  else
+				cp minetest.conf minetest/minetest.conf
+		  fi
+		  
+		  echo "Veuillez éditer le fichier $(pwd)/minetest/minetest.conf"
+	 fi
+
+	 if [[ ! -d logs ]]; then
+		  mkdir logs
+	 fi
+
+	 if [[ $ver == "0.4"]]; then
+		  if [[ ! -a start.sh]]; then
+				cp server-0.4/other_things/scripts/Server-side/script/start-mff.sh ./start.sh
+				echo "Veuiller éditer le fichier start.sh"
+		  fi
+	 fi
+}
+
 init() {
 	 ver=$(strip $1)
 	 
@@ -292,7 +316,7 @@ init() {
 		  install_minetest_game
 		  install_mods
 		  install_world
-		  
+		  post_install
 		  echo "L'installation est terminé. Bravo !"
 	 else
 		  echo "Installation annulée. Fin."
