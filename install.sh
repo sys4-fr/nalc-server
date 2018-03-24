@@ -288,8 +288,8 @@ post_install() {
 		  mkdir logs
 	 fi
 
-	 if [[ $ver == "0.4"]]; then
-		  if [[ ! -a start.sh]]; then
+	 if [[ $ver == "0.4" ]]; then
+		  if [[ ! -a start.sh ]]; then
 				cp server-0.4/other_things/scripts/Server-side/script/start-mff.sh ./start.sh
 				echo "Veuiller éditer le fichier start.sh"
 		  fi
