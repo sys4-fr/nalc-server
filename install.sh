@@ -332,9 +332,6 @@ set -- $OPT
 
 while true; do
     case "$1" in
-	-v|--verbose)
-	    # TODO
-	    shift;;
 	-h|--help)
 	    usage;;
 	-i|--irrlicht)
