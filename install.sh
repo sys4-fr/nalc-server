@@ -310,6 +310,7 @@ post_install() {
 		  fi
 	 fi
 
+	 # skindb updater (à relancer à la main plusieurs fois pour l'instant)
 	 if [[ -d nalc-server-mods/skinsdb/updater ]]; then
 		  cd nalc-server-mods/skinsdb/updater
 		  ./update_from_db.py
