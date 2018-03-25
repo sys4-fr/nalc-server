@@ -309,6 +309,12 @@ post_install() {
 				echo "Veuiller éditer le fichier start.sh"
 		  fi
 	 fi
+
+	 if [[ -d nalc-server-mods/skinsdb/updater ]]; then
+		  cd nalc-server-mods/skinsdb/updater
+		  ./update_from_db.py
+		  cd ../../..
+	 fi
 }
 
 init() {
