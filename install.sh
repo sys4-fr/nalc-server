@@ -204,6 +204,15 @@ install_world() {
 				fi
 				
 				mv minetest/worlds/nalc minetest/worlds/nalc_old
+
+				if [[ -n $pg_dbname ]]; then
+					 dropdb $pg_dbname
+					 verif
+					 dropdb players-$pg_dbname
+					 verif
+					 createdb $pg_dbname
+					 createdb players-$pg_dbname
+				fi
 		  fi
 	 fi
 
