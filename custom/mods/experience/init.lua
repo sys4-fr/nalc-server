@@ -42,11 +42,11 @@ minetest.register_on_joinplayer(function(player)
 		hud = player:hud_add({
 			hud_elem_type = "statbar",
 			position = {x=0.5,y=1},
-			size = {x=20, y=20},
-			text = "orb.png",
+			size = {x=20, y=5},
+			text = "orb_hud.png",
 			number = 40,
 			alignment = {x=0,y=1},
-			offset = {x=-200, y=-87},
+			offset = {x=-200, y=-65},
 		      }
 		),
 		
@@ -59,7 +59,7 @@ minetest.register_on_joinplayer(function(player)
                     scale = {x=2,y=2},
                     alignment = {x=0,y=1},
                     number = 0xFF0000, --0xFFFFFF,
-		    offset = {x=-160 , y=-65},
+		    offset = {x=-240 , y=-65},
 			}
 		),
 	}
