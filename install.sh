@@ -77,12 +77,20 @@ postgresql() {
 install_0.4() {
 	 if [[ -d server-0.4 ]]; then
 		  echo "Installation précédente détecté. Voulez-vous faire la mise à jour ?"
-		  read -p "Continuer ? (y or n) " continuer
+		  read -p "Votre choix ? (y, n, clean) " continuer
 		  if [[ $continuer == "y" ]]; then
 				cd server-0.4
 				git pull
 				verif
 				git submodule update --remote --recursive
+				verif
+				cd ..
+		  elif [[ $continuer == "clean" ]]; then
+				rm -rf server-0.4
+				git clone https://github.com/sys4-fr/server-nalc.git server-0.4
+				verif
+				cd server-0.4
+				git submodule update --init --recursive
 				verif
 				cd ..
 		  else
@@ -128,11 +136,11 @@ install_minetest() {
 	 fi
 
 	 if [[ ! -d minetest ]]; then
+		  local branch="-b master"
 		  if [[ $ver == "0.4" ]]; then
-				git clone -b backport-0.4 https://github.com/minetest/minetest.git
-		  else
-				git clone $URL/minetest.git
+				branch="-b backport-0.4"
 		  fi
+		  git clone $branch $URL/minetest.git
 		  verif
 	 fi
 
@@ -146,7 +154,7 @@ install_minetest() {
 }
 
 install_minetest_game() {
-	 if [[ -d minetest_game && ! $ver == "0.4" ]]; then
+	 if [[ -d minetest_game ]]; then
 		  echo "Installation précédente du jeux Minetest détecté."
 		  read -p "Mettre à jour ? (y,n,clean,cancel) " continue
 		  if [[ $continue == "y" ]]; then
@@ -172,21 +180,16 @@ install_minetest_game() {
 	 fi
 
 	 if [[ ! -d minetest_game ]]; then
+		  local branch="-b master"
 		  if [[ ! $ver == "0.4" ]]; then
-				git clone $URL/minetest_game.git
-				verif
-				echo "Clonage de minetest_game terminé."
-		  else
-				ln -s $(pwd)/server-0.4/minetest_game minetest_game
+				branch="-b backport-0.4"
 		  fi
-	 elif [[ $ver == "0.4" ]]; then
-		  if [[ -a minetest_game ]]; then
-				rm minetest_game
-		  fi
-		  ln -s $(pwd)/server-0.4/minetest_game minetest_game
+		  git clone $branch $URL/minetest_game.git
+		  verif
+		  echo "Clonage de minetest_game terminé."
 	 fi
 
-	 if [[ ! -a minetest/games/minetest_game ]]; then
+	 if [[ ! -L minetest/games/minetest_game ]]; then
 		  ln -s $(pwd)/minetest_game minetest/games/minetest_game
 		  echo "Lien symbolique minetest/games/minetest_game vers $(pwd)/minetest_game créé."
 	 fi
@@ -218,6 +221,11 @@ install_world() {
 
 	 if [[ ! -d minetest/worlds/nalc ]]; then
 		  mkdir -p minetest/worlds/nalc
+		  if [[ -n $pg_dbname ]]; then
+				createdb $pg_dbname
+				createdb players-$pg_dbname
+		  fi
+
 		  if [[ $ver == "0.4" ]]; then
 				ln -s $(pwd)/server-0.4/worlds/minetestforfun/world.mt minetest/worlds/nalc/world.mt
 		  else
@@ -228,10 +236,46 @@ install_world() {
 
 install_mods() {
 	 if [[ $ver == "0.4" ]]; then
+		  local i=0
+		  local md[1]="" # Mods to disable
+		  for mod in "mysql_auth watershed mobs_old magicmithril obsidian eventobjects player_inactive random_messages irc irc_commands profilerdumper profnsched"; do
+				i=$(( $i+1 ))
+				md[$i]=$mod
+		  done
+		  
 		  if [[ -d minetest/mods ]]; then
 				rm -rf minetest/mods
 				ln -s $(pwd)/server-0.4/mods minetest/mods
 		  fi
+
+		  if [[ -a world.mt ]]; then
+				rm world.mt
+		  fi
+		  cp worldmt.conf world.mt
+
+		  ls server-0.4/mods | while read -r mod; do
+				if [[ -a server-0.4/mods/$mod/modpack.txt ]]; then
+					 ls server-0.4/mods/$mod | while read -r submod; do
+						  if [[ -d server-0.4/mods/$mod/$submod ]]; then
+								local mod_enable="true"
+								for (( modn=1; modn<$i; modn++ )); do
+									 if [[ ${md[$modn]} == $submod ]]; then
+										  mod_enable="false"
+									 fi
+								done
+								echo "load_mod_$submod = $mod_enable" >> world.mt
+						  fi
+					 done
+				else
+					 local mod_enable="true"
+					 for (( modn=1; modn<$i; modn++ )); do
+						  if [[ ${md[$modn]} == $mod ]]; then
+								mod_enable="false"
+						  fi
+					 done  
+					 echo "load_mod_$mod = $mod_enable" >> world.mt
+				fi
+		  done
 	 else
 		  if [[ -d nalc-server-mods ]]; then
 				echo "Le dossier de mods est déjà présent. Que souhaitez-vous faire ?"
