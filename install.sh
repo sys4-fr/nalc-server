@@ -25,9 +25,9 @@ usage() {
     echo "--makeopt | -j : Passer des options à make."
     echo "--ssh <user@host>: Identifiants ssh."
     echo "--url <URL>: URL distante personnalisée."
+	 echo -e "\tSi l'option --ssh est passée en option, il s'agira du chemin distant."
 	 echo "--irrlicht | -i : Chemin personnalisé des sources irrlicht."
 	 echo "--postgresql | -p : Si vous voulez que le serveur soit configuré avec postgresql"
-    echo -e "\tSi l'option --ssh est passée en option, il s'agira du chemin distant."
     echo "Commandes :"
     echo -e "\t0.5 : Installation du serveur avec minetest-0.5.x. Suivez les instructions..."
     echo -e "\t0.4 : Installation du serveur avec minetest-0.4.x. Suivez les instructions..."
@@ -67,22 +67,30 @@ postgresql() {
 	 read -p "Indiquez le mot de passe : " pg_password
 	 read -p "Indiquez le nom de la BDD à utiliser : " pg_dbname
 
-	 echo "gameid = minetest_game" > worldmt.conf
-	 echo "backend = postgresql" >> worldmt.conf
-	 echo "player_backend = postgresql" >> worldmt.conf
-	 echo "pgsql_connection = host=$pg_url user=$pg_user password=$pg_password dbname=$pg_dbname" >> worldmt.conf
-	 echo "pgsql_player_connection = host=$pg_url user=$pg_user password=$pg_password dbname=players-$pg_dbname" >> worldmt.conf
+	 echo "gameid = minetest_game" > world.mt
+	 echo "backend = postgresql" >> world.mt
+	 echo "player_backend = postgresql" >> world.mt
+	 echo "pgsql_connection = host=$pg_url user=$pg_user password=$pg_password dbname=$pg_dbname" >> world.mt
+	 echo "pgsql_player_connection = host=$pg_url user=$pg_user password=$pg_password dbname=players-$pg_dbname" >> world.mt
 }
 
 install_0.4() {
 	 if [[ -d server-0.4 ]]; then
 		  echo "Installation précédente détecté. Voulez-vous faire la mise à jour ?"
-		  read -p "Continuer ? (y or n) " continuer
+		  read -p "Votre choix ? (y, n, clean) " continuer
 		  if [[ $continuer == "y" ]]; then
 				cd server-0.4
 				git pull
 				verif
 				git submodule update --remote --recursive
+				verif
+				cd ..
+		  elif [[ $continuer == "clean" ]]; then
+				rm -rf server-0.4
+				git clone https://github.com/sys4-fr/server-nalc.git server-0.4
+				verif
+				cd server-0.4
+				git submodule update --init --recursive
 				verif
 				cd ..
 		  else
@@ -128,11 +136,11 @@ install_minetest() {
 	 fi
 
 	 if [[ ! -d minetest ]]; then
+		  local branch="-b master"
 		  if [[ $ver == "0.4" ]]; then
-				git clone -b backport-0.4 https://github.com/minetest/minetest.git
-		  else
-				git clone $URL/minetest.git
+				branch="-b backport-0.4"
 		  fi
+		  git clone $branch $URL/minetest.git
 		  verif
 	 fi
 
@@ -146,7 +154,7 @@ install_minetest() {
 }
 
 install_minetest_game() {
-	 if [[ -d minetest_game && ! $ver == "0.4" ]]; then
+	 if [[ -d minetest_game ]]; then
 		  echo "Installation précédente du jeux Minetest détecté."
 		  read -p "Mettre à jour ? (y,n,clean,cancel) " continue
 		  if [[ $continue == "y" ]]; then
@@ -172,21 +180,16 @@ install_minetest_game() {
 	 fi
 
 	 if [[ ! -d minetest_game ]]; then
-		  if [[ ! $ver == "0.4" ]]; then
-				git clone $URL/minetest_game.git
-				verif
-				echo "Clonage de minetest_game terminé."
-		  else
-				ln -s $(pwd)/server-0.4/minetest_game minetest_game
+		  local branch="-b master"
+		  if [[ $ver == "0.4" ]]; then
+				branch="-b backport-0.4"
 		  fi
-	 elif [[ $ver == "0.4" ]]; then
-		  if [[ -a minetest_game ]]; then
-				rm minetest_game
-		  fi
-		  ln -s $(pwd)/server-0.4/minetest_game minetest_game
+		  git clone $branch $URL/minetest_game.git
+		  verif
+		  echo "Clonage de minetest_game terminé."
 	 fi
 
-	 if [[ ! -a minetest/games/minetest_game ]]; then
+	 if [[ ! -L minetest/games/minetest_game ]]; then
 		  ln -s $(pwd)/minetest_game minetest/games/minetest_game
 		  echo "Lien symbolique minetest/games/minetest_game vers $(pwd)/minetest_game créé."
 	 fi
@@ -218,20 +221,57 @@ install_world() {
 
 	 if [[ ! -d minetest/worlds/nalc ]]; then
 		  mkdir -p minetest/worlds/nalc
-		  if [[ $ver == "0.4" ]]; then
-				ln -s $(pwd)/server-0.4/worlds/minetestforfun/world.mt minetest/worlds/nalc/world.mt
-		  else
-				ln -s $(pwd)/world.mt minetest/worlds/nalc/world.mt
+		  if [[ -n $pg_dbname ]]; then
+				createdb $pg_dbname
+				createdb players-$pg_dbname
 		  fi
+
+		  ln -s $(pwd)/world.mt minetest/worlds/nalc/world.mt
 	 fi
 }		
 
 install_mods() {
 	 if [[ $ver == "0.4" ]]; then
+		  local i=0
+		  local md[1]="" # Mods to disable
+		  for mod in mysql_auth watershed mobs_old magicmithril obsidian eventobjects player_inactive random_messages irc irc_commands profilerdumper profnsched; do
+				i=$(( $i+1 ))
+				md[$i]=$mod
+		  done
+		  
 		  if [[ -d minetest/mods ]]; then
 				rm -rf minetest/mods
 				ln -s $(pwd)/server-0.4/mods minetest/mods
 		  fi
+
+		  if [[ -a world.mt && -z $pg_dbname ]]; then
+				rm world.mt
+				cp worldmt.conf world.mt
+		  fi
+		  
+		  ls server-0.4/mods | while read -r mod; do
+				if [[ -a server-0.4/mods/$mod/modpack.txt ]]; then
+					 ls server-0.4/mods/$mod | while read -r submod; do
+						  if [[ -d server-0.4/mods/$mod/$submod ]]; then
+								local mod_enable="true"
+								for (( modn=1; modn<=$i; modn++ )); do
+									 if [[ ${md[$modn]} == $submod ]]; then
+										  mod_enable="false"
+									 fi
+								done
+								echo "load_mod_$submod = $mod_enable" >> world.mt
+						  fi
+					 done
+				else
+					 local mod_enable="true"
+					 for (( modn=1; modn<=$i; modn++ )); do
+						  if [[ ${md[$modn]} == $mod ]]; then
+								mod_enable="false"
+						  fi
+					 done  
+					 echo "load_mod_$mod = $mod_enable" >> world.mt
+				fi
+		  done
 	 else
 		  if [[ -d nalc-server-mods ]]; then
 				echo "Le dossier de mods est déjà présent. Que souhaitez-vous faire ?"
@@ -262,11 +302,10 @@ install_mods() {
 		  # Recréation des liens symboliques et du fichier world.mt (dans tous les cas)
 		  rm minetest/mods/*
 		  
-		  if [[ -a world.mt ]]; then
+		  if [[ -a world.mt && -z $pg_dbname ]]; then
 				rm world.mt
+				cp worldmt.conf world.mt
 		  fi
-		  
-		  cp worldmt.conf world.mt
 		  
 		  if [[ -d custom/mods ]]; then
 				ls custom/mods | while read -r mod; do
