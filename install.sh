@@ -210,9 +210,9 @@ install_world() {
 
 				if [[ -n $pg_dbname ]]; then
 					 dropdb $pg_dbname
-					 verif
+					 sleep 2
 					 dropdb players-$pg_dbname
-					 verif
+					 sleep 2
 					 createdb $pg_dbname
 					 createdb players-$pg_dbname
 				fi
