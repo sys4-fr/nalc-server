@@ -260,6 +260,9 @@ install_mods() {
 									 fi
 								done
 								echo "load_mod_$submod = $mod_enable" >> world.mt
+								if [[ $mod_enable == "true" && -d custom/textures/$submod ]]; then
+									 cp custom/textures/$submod/* server-0.4/mods/$mod/$submod/textures/
+								fi
 						  fi
 					 done
 				else
@@ -270,6 +273,9 @@ install_mods() {
 						  fi
 					 done  
 					 echo "load_mod_$mod = $mod_enable" >> world.mt
+					 if [[ $mod_enable == "true" && -d custom/textures/$mod ]]; then
+						  cp custom/textures/$submod/* server-0.4/mods/$mod/textures/
+					 fi
 				fi
 		  done
 	 else
