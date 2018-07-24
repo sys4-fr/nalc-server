@@ -234,7 +234,7 @@ install_mods() {
 	 if [[ $ver == "0.4" ]]; then
 		  local i=0
 		  local md[1]="" # Mods to disable
-		  for mod in mysql_auth watershed mobs_old magicmithril obsidian eventobjects player_inactive random_messages irc irc_commands profilerdumper profnsched; do
+		  for mod in 3d_armor_ip 3d_armor_inv mysql_auth watershed mobs_old magicmithril blackmithril hardenedleather reinforcedleather obsidian eventobjects player_inactive random_messages irc irc_commands profilerdumper profnsched; do
 				i=$(( $i+1 ))
 				md[$i]=$mod
 		  done
