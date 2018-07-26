@@ -82,25 +82,25 @@ install_0.4() {
 				cd server-0.4
 				git pull
 				verif
-				git submodule update --remote --recursive
+				git -c http.sslVerify=false submodule update --remote --recursive
 				verif
 				cd ..
 		  elif [[ $continuer == "clean" ]]; then
 				rm -rf server-0.4
-				git clone https://github.com/sys4-fr/server-nalc.git server-0.4
+				git -c http.sslVerify=false clone -b dev $URL/server-nalc.git server-0.4
 				verif
 				cd server-0.4
-				git submodule update --init --recursive
+				git -c http.sslVerify=false submodule update --init --recursive
 				verif
 				cd ..
 		  else
 				echo "Mise à jour annulé."
 		  fi
 	 else
-		  git clone https://github.com/sys4-fr/server-nalc.git server-0.4
+		  git -c http.sslVerify=false clone -b dev $URL/server-nalc.git server-0.4
 		  verif
 		  cd server-0.4
-		  git submodule update --init --recursive
+		  git -c http.sslVerify=false submodule update --init --recursive
 		  verif
 		  cd ..
 	 fi
@@ -138,9 +138,9 @@ install_minetest() {
 	 if [[ ! -d minetest ]]; then
 		  local branch="-b master"
 		  if [[ $ver == "0.4" ]]; then
-				branch="-b backport-0.4"
+				branch="-b stable-0.4"
 		  fi
-		  git clone $branch $URL/minetest.git
+		  git -c http.sslVerify=false clone $branch $URL/minetest.git
 		  verif
 	 fi
 
@@ -182,9 +182,9 @@ install_minetest_game() {
 	 if [[ ! -d minetest_game ]]; then
 		  local branch="-b master"
 		  if [[ $ver == "0.4" ]]; then
-				branch="-b backport-0.4"
+				branch="-b stable-0.4"
 		  fi
-		  git clone $branch $URL/minetest_game.git
+		  git -c http.sslVerify=false clone $branch $URL/minetest_game.git
 		  verif
 		  echo "Clonage de minetest_game terminé."
 	 fi
@@ -234,7 +234,7 @@ install_mods() {
 	 if [[ $ver == "0.4" ]]; then
 		  local i=0
 		  local md[1]="" # Mods to disable
-		  for mod in 3d_armor_ip 3d_armor_inv mysql_auth watershed mobs_old magicmithril blackmithril hardenedleather reinforcedleather obsidian eventobjects player_inactive random_messages irc irc_commands profilerdumper profnsched; do
+		  for mod in 3d_armor_ip 3d_armor_sfinv mysql_auth watershed mobs_old magicmithril blackmithril hardenedleather reinforcedleather obsidian eventobjects player_inactive random_messages irc irc_commands profilerdumper profnsched; do
 				i=$(( $i+1 ))
 				md[$i]=$mod
 		  done
@@ -362,6 +362,12 @@ post_install() {
 				cp server-0.4/other_things/scripts/Server-side/script/start-mff.sh ./start.sh
 				echo "Veuiller éditer le fichier start.sh"
 		  fi
+
+		  # fix technic_worldgen crash
+		  cd server-0.4/mods/technic
+		  git checkout fb93388f06fe87ee75aaaf04cf6edcf01a26d981 technic_worldgen/oregen.lua
+		  cd ../../..
+		  echo "Fix technic_worldgen pour éviter crash appliqué."
 	 fi
 
 	 # skindb updater (à relancer à la main plusieurs fois pour l'instant)
@@ -380,7 +386,8 @@ init() {
 	 elif [[ -n $url ]]; then
 		  URL=$url
 	 else
-		  URL="https://github.com/sys4-fr"
+		  #URL="https://github.com/sys4-fr"
+		  URL="https://sys4.fr/gogs/NotreAmiLeCube"
 	 fi
 
 	 read -p "L'installation va démarrer. Continuer ? (y or n) : " continue
