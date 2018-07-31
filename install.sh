@@ -87,7 +87,7 @@ install_0.4() {
 				cd ..
 		  elif [[ $continuer == "clean" ]]; then
 				rm -rf server-0.4
-				git -c http.sslVerify=false clone $URL/server-nalc.git server-0.4
+				git -c http.sslVerify=false clone --depth 1 $URL/server-nalc.git server-0.4
 				verif
 				cd server-0.4
 				git -c http.sslVerify=false submodule update --init --recursive
@@ -97,7 +97,7 @@ install_0.4() {
 				echo "Mise à jour annulée"
 		  fi
 	 else
-		  git -c http.sslVerify=false clone $URL/server-nalc.git server-0.4
+		  git -c http.sslVerify=false clone --depth 1 $URL/server-nalc.git server-0.4
 		  verif
 		  cd server-0.4
 		  git -c http.sslVerify=false submodule update --init --recursive
@@ -140,7 +140,7 @@ install_minetest() {
 		  if [[ $ver == "0.4" ]]; then
 				branch="-b stable-0.4"
 		  fi
-		  git -c http.sslVerify=false clone $branch $URL/minetest.git
+		  git clone --depth 1 $branch https://github.com/minetest/minetest.git
 		  verif
 	 fi
 
@@ -184,7 +184,7 @@ install_minetest_game() {
 		  if [[ $ver == "0.4" ]]; then
 				branch="-b stable-0.4"
 		  fi
-		  git -c http.sslVerify=false clone $branch $URL/minetest_game.git
+		  git clone --depth 1 $branch https://github.com/minetest/minetest_game.git
 		  verif
 		  echo "Clonage de minetest_game terminé."
 	 fi
