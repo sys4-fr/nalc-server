@@ -94,7 +94,7 @@ install_0.4() {
 				verif
 				cd ..
 		  else
-				echo "Mise à jour annulé."
+				echo "Mise à jour annulée"
 		  fi
 	 else
 		  git -c http.sslVerify=false clone -b dev $URL/server-nalc.git server-0.4
@@ -202,20 +202,20 @@ install_world() {
 		  echo "Une map est déjà présente. Que souhaitez-vous faire ?"
 		  read -p "Choisissez parmi la liste ([1]Nouveau, [2]Utiliser) : " continuer
 		  if [[ $continuer == 1 ]]; then
+				if [[ -n $pg_dbname ]]; then
+					 read -p "Les BDD $pg_name et players-$pg_name ne seront pas effacées. À vous de le faire manuellement après ce script ! -- Press enter -- : " continuer
+
+					 #	 dropdb $pg_dbname
+					 #	 dropdb players-$pg_dbname
+					 #	 createdb $pg_dbname
+					 #	 createdb players-$pg_dbname
+				fi
+				
 				if [[ -d minetest/worlds/nalc_old ]]; then
 					 rm -rf minetest/worlds/nalc_old
 				fi
 				
 				mv minetest/worlds/nalc minetest/worlds/nalc_old
-
-				if [[ -n $pg_dbname ]]; then
-					 dropdb $pg_dbname
-					 sleep 2
-					 dropdb players-$pg_dbname
-					 sleep 2
-					 createdb $pg_dbname
-					 createdb players-$pg_dbname
-				fi
 		  fi
 	 fi
 
@@ -386,8 +386,7 @@ init() {
 	 elif [[ -n $url ]]; then
 		  URL=$url
 	 else
-		  #URL="https://github.com/sys4-fr"
-		  URL="https://sys4.fr/gogs/NotreAmiLeCube"
+		  URL="https://github.com/sys4-fr"
 	 fi
 
 	 read -p "L'installation va démarrer. Continuer ? (y or n) : " continue
