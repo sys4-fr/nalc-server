@@ -21,16 +21,16 @@ error() {
 usage() {
     echo "Usage: ./install.sh [options] [--] <arg>"
     echo "Options :"
-    echo "--help | -h : Affiche l'aide."
-    echo "--makeopt | -j : Passer des options à make."
-    echo "--ssh <user@host>: Identifiants ssh."
-    echo "--url <URL>: URL distante personnalisée."
-	 echo -e "\tSi l'option --ssh est passée en option, il s'agira du chemin distant."
-	 echo "--irrlicht | -i : Chemin personnalisé des sources irrlicht."
-	 echo "--postgresql | -p : Si vous voulez que le serveur soit configuré avec postgresql"
-    echo "Commandes :"
-    echo -e "\t0.5 : Installation du serveur avec minetest-0.5.x. Suivez les instructions..."
-    echo -e "\t0.4 : Installation du serveur avec minetest-0.4.x. Suivez les instructions..."
+    echo -e "\t-h --help\tAffiche l'aide."
+    echo -e "\t-j --makeopt\tNombre de threads de compilation."
+    echo -e "\t--ssh <user@host>: Identifiants ssh."
+    echo -e "\t--url <URL>: URL distante personnalisée."
+	 echo -e "\t\tSi l'option --ssh est passée en option, il s'agira du chemin distant."
+	 echo -e "\t-i --irrlicht\tChemin personnalisé des sources irrlicht."
+	 echo -e "\t-p --postgresql\tSi vous voulez que le serveur soit configuré avec postgresql"
+    echo "Arguments :"
+    echo -e "\t0.5 : Installation du serveur avec minetest-0.5.x. Suivez les instructions... (Non stable !)"
+    echo -e "\t0.4 : Installation du serveur avec minetest-0.4.x. Suivez les instructions... (Stable)"
     exit 0
 }
 
@@ -82,12 +82,12 @@ install_0.4() {
 				cd server-0.4
 				git pull
 				verif
-				git -c http.sslVerify=false submodule update --remote --recursive
+				git -c http.sslVerify=false submodule update --init --recursive
 				verif
 				cd ..
 		  elif [[ $continuer == "clean" ]]; then
 				rm -rf server-0.4
-				git -c http.sslVerify=false clone -b dev $URL/server-nalc.git server-0.4
+				git -c http.sslVerify=false clone $URL/server-nalc.git server-0.4
 				verif
 				cd server-0.4
 				git -c http.sslVerify=false submodule update --init --recursive
@@ -97,7 +97,7 @@ install_0.4() {
 				echo "Mise à jour annulée"
 		  fi
 	 else
-		  git -c http.sslVerify=false clone -b dev $URL/server-nalc.git server-0.4
+		  git -c http.sslVerify=false clone $URL/server-nalc.git server-0.4
 		  verif
 		  cd server-0.4
 		  git -c http.sslVerify=false submodule update --init --recursive
