@@ -284,9 +284,9 @@ install_mods() {
 				read -p "Choisissez parmi la liste, ([1]update, [2]clean, [3]cancel, [4]Ne rien faire) : " continue
 				if [[ $continue == 1 ]]; then
 					 cd nalc-server-mods
-					 git pull
+					 git -c http.sslVerify=false pull
 					 verif
-					 git submodule update --remote --recursive
+					 git -c http.sslVerify=false submodule update --init --recursive
 					 verif
 					 cd ..
 				elif [[ $continue == 2 ]]; then
@@ -298,10 +298,10 @@ install_mods() {
 		  fi
 		  
 		  if [[ ! -d nalc-server-mods ]]; then
-				git clone $URL/nalc-server-mods.git
+				git -c http.sslVerify=false clone $URL/nalc-server-mods.git
 				verif
 				cd nalc-server-mods
-				git submodule update --init --recursive
+				git -c http.sslVerify=false submodule update --init --recursive
 				cd ..
 		  fi
 		  
